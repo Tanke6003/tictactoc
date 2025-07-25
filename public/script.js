@@ -1,111 +1,141 @@
-let gameId, playerSymbol, turn;
-const moves = {};  // asegúrate de declarar esto globalmente
+// Referencias al DOM
+const gameIdInput = document.getElementById('gameId');
+const joinBtn     = document.getElementById('joinBtn');
+const controlsEl  = document.getElementById('controls');
+const roomInfoEl  = document.getElementById('roomInfo');
+const statusEl    = document.getElementById('status');
+const boardEl     = document.getElementById('board');
 
-// Enlaza tu botón de unirse
-document.getElementById('joinBtn')
-        .addEventListener('click', join);
+let gameId, playerSymbol, turn, moves = {};
 
-async function join() {
+// 1) Unirse a la partida
+joinBtn.addEventListener('click', async () => {
+  gameId = gameIdInput.value.trim();
+  if (!gameId) return alert('Introduce un ID de partida');
+
   try {
-    console.log('[JOIN] empieza');
-    gameId = document.getElementById('gameId').value.trim();
-    console.log('[JOIN] gameId=', gameId);
-    if (!gameId) throw new Error('ID de partida vacío');
-
-    const res = await fetch('/api/init', {
+    const res = await fetch('/api/join', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ gameId })
     });
-    console.log('[JOIN] respuesta init:', res);
-
     if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`init falló: ${res.status} ${txt}`);
+      const err = await res.json();
+      throw new Error(err.error || res.status);
     }
+    const { symbol } = await res.json();
+    playerSymbol = symbol;   // 'X' u 'O'
 
-    playerSymbol = 'X';
-    console.log('[JOIN] playerSymbol =', playerSymbol);
+    // Oculta controles y muestra sala
+    controlsEl.style.display = 'none';
+    roomInfoEl.textContent   = `Sala: ${gameId}`;
+
+    // Prepara tablero y polling
+    initBoard();
     startPolling();
-  } 
-  catch (err) {
-    console.error('[JOIN] Error:', err);
+  } catch (err) {
+    alert('No se pudo unir: ' + err.message);
+    console.error(err);
   }
+});
+
+// 2) Crear tablero y set inicial
+function initBoard() {
+  boardEl.innerHTML = '';
+  for (let i = 0; i < 9; i++) {
+    const cell = document.createElement('div');
+    cell.id    = 'cell-' + i;
+    cell.className = 'cell';
+    cell.addEventListener('click', () => makeMove(i));
+    boardEl.appendChild(cell);
+  }
+  turn  = 'X';
+  moves = {};
+  renderStatus();
 }
 
+// 3) Enviar movimiento
 async function makeMove(i) {
-  try {
-    console.log('[MOVE] intento en celda', i);
-    if (turn !== playerSymbol) {
-      console.warn('[MOVE] no es tu turno:', turn, 'vs', playerSymbol);
-      return;
-    }
-    if (moves[i]) {
-      console.warn('[MOVE] celda ya ocupada');
-      return;
-    }
+  if (turn !== playerSymbol || moves[i]) return;
 
-    const res = await fetch('/api/move', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ gameId, idx: i, symbol: playerSymbol })
-    });
-    console.log('[MOVE] respuesta move:', res);
+  await fetch('/api/move', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ gameId, idx: i, symbol: playerSymbol })
+  }).catch(e => console.error(e));
 
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`move falló: ${res.status} ${txt}`);
-    }
-
-    // opcional: actualizar UI inmediatamente
-    moves[i] = playerSymbol;
-    renderBoard();
-    renderStatus();
-  }
-  catch (err) {
-    console.error('[MOVE] Error:', err);
-  }
+  // Refleja inmediatamente
+  moves[i] = playerSymbol;
+  turn      = playerSymbol === 'X' ? 'O' : 'X';
+  renderBoard();
+  renderStatus();
 }
 
+// 4) Leer estado del servidor
 async function fetchState() {
   try {
-    console.log('[STATE] pidiendo estado');
     const res = await fetch(`/api/state?gameId=${encodeURIComponent(gameId)}`);
-    console.log('[STATE] respuesta state:', res);
-
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`state falló: ${res.status} ${txt}`);
-    }
-
     const data = await res.json();
-    console.log('[STATE] datos:', data);
-
-    // actualiza turno
+    // Turno
     turn = data.turn;
-    console.log('[STATE] turno =', turn);
-
-    // reconstruye moves
-    for (const key in data) {
-      if (key.startsWith('cell:')) {
-        const idx = key.split(':')[1];
-        moves[idx] = data[key];
+    // Jugadas
+    moves = {};
+    for (let k in data) {
+      if (k.startsWith('cell:')) {
+        const idx = k.split(':')[1];
+        moves[idx] = data[k];
       }
     }
-  }
-  catch (err) {
-    console.error('[STATE] Error:', err);
+  } catch (e) {
+    console.error('fetchState:', e);
   }
 }
 
+// 5) Polling cada segundo
 function startPolling() {
-  console.log('[POLL] iniciando polling cada 1s');
   setInterval(async () => {
-    console.log('[POLL] tick');
     await fetchState();
     renderBoard();
     renderStatus();
   }, 1000);
 }
 
-// Asegúrate también de que tus renderBoard() y renderStatus() existan y lean de `moves` y `turn`.
+// 6) Dibujar jugadas
+function renderBoard() {
+  for (let i = 0; i < 9; i++) {
+    const c = document.getElementById('cell-' + i);
+    c.textContent = moves[i] || '';
+    c.classList.toggle('disabled', !!moves[i]);
+  }
+}
+
+// 7) Mostrar estado y ganador
+function renderStatus() {
+  const w = checkWinner();
+  if (w) {
+    statusEl.textContent = w === 'draw'
+      ? '¡Empate!'
+      : `Gana '${w}'`;
+    document.querySelectorAll('.cell')
+      .forEach(c => c.classList.add('disabled'));
+  } else {
+    statusEl.textContent = turn === playerSymbol
+      ? `Tu turno ('${playerSymbol}')`
+      : `Turno de '${turn}'`;
+  }
+}
+
+// 8) Detectar ganador o empate
+function checkWinner() {
+  const combos = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+  for (const [a,b,c] of combos) {
+    if (moves[a] && moves[a] === moves[b] && moves[b] === moves[c]) {
+      return moves[a];
+    }
+  }
+  return Object.keys(moves).length === 9 ? 'draw' : null;
+}

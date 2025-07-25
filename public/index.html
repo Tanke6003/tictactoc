@@ -2,20 +2,25 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device‑width, initial-scale=1.0" />
-  <title>Gato Online (WebSocket)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gato Online</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <!-- Controles iniciales -->
   <div id="controls">
     <input type="text" id="gameId" placeholder="ID de partida" />
     <button id="joinBtn">Unirse</button>
   </div>
+
+  <!-- Mostramos el ID de la sala -->
+  <div id="roomInfo" class="room-info"></div>
+
+  <!-- Estado y tablero -->
   <div id="status" class="status"></div>
   <div id="board" class="board"></div>
 
- <script src="https://cdn.socket.io/4.7.1/socket.io.min.js"></script>
-
+  <!-- Tu lógica cliente -->
   <script src="script.js"></script>
 </body>
 </html>
