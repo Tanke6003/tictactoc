@@ -6,9 +6,9 @@ export default async function handler(req, res) {
     res.setHeader('Allow','GET');
     return res.status(405).end('Only GET');
   }
-  const { gameId } = req.query;
-  if (!gameId) return res.status(400).json({ error: 'Missing gameId' });
-
-  const data = await redis.hgetall(`game:${gameId}`) || {};
-  return res.status(200).json(data);
+  const data = (await redis.hgetall('scoreboard')) || {};
+  return res.status(200).json({
+    X: Number(data.X) || 0,
+    O: Number(data.O) || 0
+  });
 }

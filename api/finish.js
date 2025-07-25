@@ -6,13 +6,13 @@ export default async function handler(req, res) {
     res.setHeader('Allow','POST');
     return res.status(405).end('Only POST');
   }
-  const { gameId, idx, symbol } = req.body;
-  if (!gameId || idx == null || !symbol) {
-    return res.status(400).json({ error: 'Missing params' });
+  const { gameId, winner } = req.body;
+  if (!gameId || !['X','O','draw'].includes(winner)) {
+    return res.status(400).json({ error: 'Invalid params' });
   }
-  await redis.hset(`game:${gameId}`, {
-    [`cell:${idx}`]: symbol,
-    turn: symbol === 'X' ? 'O' : 'X'
-  });
+  if (winner !== 'draw') {
+    await redis.hincrby('scoreboard', winner, 1);
+  }
+  await redis.del(`game:${gameId}`);
   return res.status(200).json({ ok: true });
 }

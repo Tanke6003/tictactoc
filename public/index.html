@@ -7,20 +7,21 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- Controles iniciales -->
+  <!-- 1) Controles iniciales -->
   <div id="controls">
+    <button id="createBtn">Crear sala</button>
     <input type="text" id="gameId" placeholder="ID de partida" />
     <button id="joinBtn">Unirse</button>
   </div>
 
-  <!-- Mostramos el ID de la sala -->
+  <!-- 2) Sala + marcador -->
   <div id="roomInfo" class="room-info"></div>
+  <div id="scoreboard" class="scoreboard"></div>
 
-  <!-- Estado y tablero -->
+  <!-- 3) Estado y tablero -->
   <div id="status" class="status"></div>
   <div id="board" class="board"></div>
 
-  <!-- Tu lógica cliente -->
   <script src="script.js"></script>
 </body>
 </html>
