@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device‑width, initial-scale=1.0" />
+  <title>Gato Online (WebSocket)</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="controls">
+    <input type="text" id="gameId" placeholder="ID de partida" />
+    <button id="joinBtn">Unirse</button>
+  </div>
+  <div id="status" class="status"></div>
+  <div id="board" class="board"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
